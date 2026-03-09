@@ -13,8 +13,8 @@
 ```json
 {
     // Keil 编译器路径配置
-    "UV4_PATH": "D:/keilv5/UV4/UV4.exe",
-    "KEIL_C251_INC": "D:/keilv5/C251/INC",
+    "UV4_PATH": "你的UV4地址",    //例如 "D:/keilv5/UV4/UV4.exe" 一定要打双引号
+    "KEIL_C251_INC": "你的C251/INC地址",    //例如 "D:/keilv5/C251/INC" 
     
     // 项目配置
     "PROJECT_FILE": "${workspaceFolder}/project/mdk/seekfree.uvproj",
