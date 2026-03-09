@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
+  <component name="CidrRootsConfiguration">
+    <sourceRoots>
+      <file path="$PROJECT_DIR$/libraries" />
+      <file path="$PROJECT_DIR$/project/user" />
+      <file path="$PROJECT_DIR$/project/code" />
+    </sourceRoots>
+    <libraryRoots>
+      <file path="D:/keilv5/C251/INC" />
+    </libraryRoots>
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/project/mdk/Out_File" />
+      <file path="$PROJECT_DIR$/project/user/output" />
+    </excludeRoots>
+  </component>
+  <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
+</project>
+

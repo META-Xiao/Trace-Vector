@@ -1,0 +1,102 @@
+{
+    "version": "2.1.0",
+    "tasks": [
+        {
+            "label": "Clean Temp Files",
+            "type": "shell",
+            "command": "Set-Location '${workspaceFolder}/project/mdk'; if (Test-Path 'Out_File') { Remove-Item -Path 'Out_File' -Recurse -Force }; Remove-Item -Path 'TraceVector.uvg*' -Force -ErrorAction SilentlyContinue; Remove-Item -Path 'TraceVector.uvopt' -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path 'Out_File' -Force | Out-Null; exit 0",
+            "presentation": {
+                "echo": false,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "Keil Build",
+            "type": "shell",
+            "command": "powershell.exe",
+            "args": [
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/.vscode/build.ps1",
+                "-UV4Path",
+                "${config:UV4_PATH}",
+                "-ProjectFile",
+                "${config:PROJECT_FILE}",
+                "-Target",
+                "${config:TARGET_NAME}",
+                "-Mode",
+                "build"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": ["Clean Temp Files"],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": {
+                "owner": "keil",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": {
+                    "regexp": "^(.*)\\((\\d+)\\):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "severity": 3,
+                    "message": 4
+                }
+            }
+        },
+        {
+            "label": "Keil Debug Build",
+            "type": "shell",
+            "command": "powershell.exe",
+            "args": [
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/.vscode/build.ps1",
+                "-UV4Path",
+                "${config:UV4_PATH}",
+                "-ProjectFile",
+                "${config:PROJECT_FILE}",
+                "-Target",
+                "${config:TARGET_NAME}",
+                "-Mode",
+                "debug"
+            ],
+            "group": "build",
+            "dependsOn": ["Clean Temp Files"],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": {
+                "owner": "keil",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": {
+                    "regexp": "^(.*)\\((\\d+)\\):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "severity": 3,
+                    "message": 4
+                }
+            }
+        }
+    ]
+}
+

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding" defaultCharsetForPropertiesFiles="GB2312">
+    <file url="file://$PROJECT_DIR$/libraries" charset="GB2312" />
+    <file url="file://$PROJECT_DIR$/project/user" charset="GB2312" />
+    <file url="file://$PROJECT_DIR$/project/code" charset="GB2312" />
+    <file url="file://$PROJECT_DIR$/project/mdk/Out_File" charset="windows-1252" />
+    <file url="PROJECT" charset="UTF-8" />
+  </component>
+</project>

@@ -1,0 +1,100 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/libraries/zf_common",
+                "${workspaceFolder}/libraries/zf_driver",
+                "${workspaceFolder}/libraries/zf_device",
+                "${workspaceFolder}/libraries/zf_components/seekfree_assistant",
+                "${workspaceFolder}/libraries/zf_components/stc32g_usb_lib",
+                "${workspaceFolder}/project/user",
+                "${workspaceFolder}/project/code",
+                "${config:KEIL_C251_INC}"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "__C251__",
+                "__KEIL__",
+                "__VSCODE_C251__",
+                "reentrant=",
+                "compact=",
+                "small=",
+                "large=",
+                "data=",
+                "idata=",
+                "pdata=",
+                "bdata=",
+                "xdata=",
+                "code=",
+                "bit=char",
+                "sbit=char",
+                "sfr=char",
+                "sfr16=int",
+                "sfr32=int",
+                "interrupt=//",
+                "using=//",
+                "_at_=//",
+                "_priority_=",
+                "_task_="
+            ],
+            "windowsSdkVersion": "10.0.22000.0",
+            "cStandard": "c99",
+            "cppStandard": "c++11",
+            "intelliSenseMode": "windows-gcc-x86",
+            "compilerArgs": [],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}",
+                    "${config:KEIL_C251_INC}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        },
+        {
+            "name": "seekfree_stc32g144k246",
+            "includePath": [
+                "e:\\SkFSTC32G144K256\\libraries\\zf_common",
+                "e:\\SkFSTC32G144K256\\libraries\\zf_components",
+                "e:\\SkFSTC32G144K256\\libraries\\zf_device",
+                "e:\\SkFSTC32G144K256\\libraries\\zf_driver",
+                "e:\\SkFSTC32G144K256\\project\\user",
+                "e:\\SkFSTC32G144K256\\project\\code",
+                "e:\\SkFSTC32G144K256\\libraries\\zf_components\\stc32g_usb_lib",
+                "e:\\SkFSTC32G144K256\\libraries\\zf_components\\seekfree_assistant",
+                "D:\\keilv5\\C251\\INC",
+                "e:\\SkFSTC32G144K256\\libraries\\doc",
+                "${default}"
+            ],
+            "defines": [
+                "__C251__",
+                "__VSCODE_C251__",
+                "reentrant=",
+                "compact=",
+                "small=",
+                "large=",
+                "data=",
+                "idata=",
+                "pdata=",
+                "bdata=",
+                "xdata=",
+                "code=",
+                "bit=char",
+                "sbit=char",
+                "sfr=char",
+                "sfr16=int",
+                "sfr32=int",
+                "interrupt=",
+                "using=",
+                "_at_=",
+                "_priority_=",
+                "_task_="
+            ],
+            "intelliSenseMode": "${default}"
+        }
+    ],
+    "version": 4
+}

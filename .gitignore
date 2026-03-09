@@ -1,0 +1,55 @@
+# VSCode 个人配置
+.vscode/settings.json
+
+# Keil 编译输出
+project/mdk/Out_File/
+project/mdk/*.uvgui*
+project/mdk/*.uvopt
+project/mdk/*.bak
+project/mdk/*.dep
+project/mdk/*.uvguix.*
+project/user/output/
+
+# 编译生成文件
+*.o
+*.obj
+*.hex
+*.bin
+*.axf
+*.htm
+*.lnp
+*.lst
+*.map
+*.d
+*.crf
+*.plg
+*.tra
+*.build_log.htm
+
+# IDE 配置（保留示例文件）
+.vscode/settings.json
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries/
+.idea/shelf/
+
+# CMake 生成文件
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
