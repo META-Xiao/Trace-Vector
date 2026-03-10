@@ -94,6 +94,47 @@
                 "_task_="
             ],
             "intelliSenseMode": "${default}"
+        },
+        {
+            "name": "TraceVector_stc32g144k246",
+            "includePath": [
+                "e:\\SkFSTC32G144K256\\libraries\\zf_common",
+                "e:\\SkFSTC32G144K256\\libraries\\zf_components",
+                "e:\\SkFSTC32G144K256\\libraries\\zf_device",
+                "e:\\SkFSTC32G144K256\\libraries\\zf_driver",
+                "e:\\SkFSTC32G144K256\\project\\user",
+                "e:\\SkFSTC32G144K256\\project\\code",
+                "e:\\SkFSTC32G144K256\\libraries\\zf_components\\stc32g_usb_lib",
+                "e:\\SkFSTC32G144K256\\libraries\\zf_components\\seekfree_assistant",
+                "D:\\keilv5\\C251\\INC",
+                "e:\\SkFSTC32G144K256\\libraries\\doc",
+                "${default}"
+            ],
+            "defines": [
+                "__C251__",
+                "__VSCODE_C251__",
+                "reentrant=",
+                "compact=",
+                "small=",
+                "large=",
+                "data=",
+                "idata=",
+                "pdata=",
+                "bdata=",
+                "xdata=",
+                "code=",
+                "bit=char",
+                "sbit=char",
+                "sfr=char",
+                "sfr16=int",
+                "sfr32=int",
+                "interrupt=",
+                "using=",
+                "_at_=",
+                "_priority_=",
+                "_task_="
+            ],
+            "intelliSenseMode": "${default}"
         }
     ],
     "version": 4

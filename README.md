@@ -24,6 +24,7 @@ SkFSTC32G144K256/
 ### 必需工具
 - Keil μVision 5 (C251 工具链)
 - VSCode 或 CLion (推荐)
+    - 如果是VSC的话你还要下载C/Cpp的扩展包
 
 ### VSCode 配置
 详见 [VSCode 配置说明](.vscode/README.md)
@@ -32,7 +33,8 @@ SkFSTC32G144K256/
 2. 修改 Keil 安装路径
 3. 按 `Ctrl+Shift+B` 编译
 
-### CLion 配置
+### CLion 配置 
+详见 [Clion 配置说明](.idea\README.md)
 项目已包含 CMakeLists.txt，直接打开即可使用代码补全和跳转功能。实际编译仍需使用 Keil。
 
 ## Git 协作
