@@ -4,7 +4,7 @@
 > 文件位置：`project/code/camera.h` / `project/code/camera.c`  
 > 依赖库：`zf_device_mt9v03x`、`zf_device_mt9v03x_dma`  
 > 作者：Trace Vector · 创建日期：2026-03-10  
-> 最后更新：2026-03-10（间隔采样 + 帧降频优化）
+> 最后更新：2026-03-10（间隔采样 + 帧降频优化；添加 printf log）
 
 ---
 
@@ -36,8 +36,10 @@ void main(void)
     // 1. 初始化摄像头
     if (camera_init() != 0)
     {
+        // 串口会输出：[Camera] init failed, ret=XX
         while(1);  // 初始化失败，检查接线
     }
+    // 串口会输出：[Camera] init ok, exposure=512
 
     while (1)
     {
@@ -138,12 +140,10 @@ uint8 camera_init(void);
 ```c
 if (camera_init() != 0)
 {
-    printf("[Camera] init failed, check wiring and IIC pins PB6/PB7\r\n");
+    // 模块内部已打印：[Camera] init failed, ret=XX
+    while(1);
 }
-else
-{
-    printf("[Camera] init ok, exposure=%u\r\n", camera_get_exposure());
-}
+// 模块内部已打印：[Camera] init ok, exposure=512
 ```
 
 ---
@@ -186,6 +186,8 @@ uint8 camera_set_exposure(uint16 exp);
 **示例**：
 ```c
 camera_set_exposure(300);   // 固定曝光为 300
+// 成功时串口输出：[Camera] set exposure=300
+// 失败时串口输出：[Camera] set exposure failed, ret=XX
 ```
 
 ---
@@ -214,13 +216,18 @@ void camera_auto_exposure(void);
          |
     error = avg - TARGET
          |
-    |error| <= TOLERANCE -----> 不调整，返回（防抖死区）
+    printf("[Camera] AE avg=XX, error=XX, exp=XX")  // 每次 AE 执行均打印
+         |
+    |error| <= TOLERANCE -----> printf("[Camera] AE within tolerance, no adjustment")
+         |                       不调整，返回（防抖死区）
          |
     delta = -error / 4，限幅至 +-CAMERA_AE_STEP
          |
     new_exp = s_exposure + delta，限幅至 [EXP_MIN, EXP_MAX]
          |
-    camera_set_exposure(new_exp)  // SCCB 写入摄像头
+    printf("[Camera] AE adjust delta=XX, new_exp=XX")  // 实际调整时打印
+         |
+    camera_set_exposure(new_exp)  // SCCB 写入摄像头，同时打印 set exposure=XX
 ```
 
 **调用时机**：每帧图像采集完成后调用一次，内部自动处理帧降频。
@@ -292,7 +299,25 @@ while (1)
 
 ---
 
-## 5. 底层库函数速查（zf_device_mt9v03x）
+## 5. 日志输出说明
+
+所有 `printf` 日志均以 `[Camera]` 为前缀，通过串口（`debug_init()` 初始化后）输出，格式如下：
+
+| 触发时机 | 日志内容 |
+|----------|----------|
+| `camera_init()` 成功 | `[Camera] init ok, exposure=<值>` |
+| `camera_init()` 失败 | `[Camera] init failed, ret=<错误码>` |
+| `camera_set_exposure()` 成功 | `[Camera] set exposure=<值>` |
+| `camera_set_exposure()` 失败 | `[Camera] set exposure failed, ret=<错误码>` |
+| AE 每次执行（到达帧间隔后） | `[Camera] AE avg=<均值>, error=<误差>, exp=<当前曝光>` |
+| AE 误差在死区内，不调整 | `[Camera] AE within tolerance, no adjustment` |
+| AE 实际触发曝光调整 | `[Camera] AE adjust delta=<步长>, new_exp=<新曝光>` |
+
+> **注意**：`camera_auto_exposure()` 内部含帧降频，只有到达 `CAMERA_AE_FRAME_INTERVAL` 间隔时才会输出上述 AE 日志，其余帧静默返回，不产生日志。
+
+---
+
+## 6. 底层库函数速查（zf_device_mt9v03x）
 
 以下为本模块直接调用的底层库函数，一般不需要用户直接调用。
 
@@ -313,7 +338,7 @@ while (1)
 
 ---
 
-## 6. 摄像头默认参数（来自 zf_device_mt9v03x.h）
+## 7. 摄像头默认参数（来自 zf_device_mt9v03x.h）
 
 | 参数 | 宏定义 | 默认值 | 说明 |
 |------|--------|--------|------|
@@ -328,7 +353,7 @@ while (1)
 
 ---
 
-## 7. 引脚占用总览
+## 8. 引脚占用总览
 
 | 引脚 | 功能 | 说明 |
 |------|------|------|
@@ -346,7 +371,7 @@ while (1)
 
 ---
 
-## 8. 中断配置说明
+## 9. 中断配置说明
 
 本模块依赖以下两个中断，已在 `project/user/isr.c` 中配置，**无需用户修改**：
 
@@ -366,7 +391,7 @@ void DMA_LCM_IRQHandler() interrupt DMA_LCM_VECTOR
 
 ---
 
-## 9. 常见问题
+## 10. 常见问题
 
 **Q：`camera_init()` 返回非 0，初始化失败？**  
 A：检查摄像头供电（3.3V）、IIC 引脚 PB6/PB7 连接是否正常，确认 `MT9V03X_INIT_TIMEOUT`（默认 400ms）内摄像头已上电完成。

@@ -1,7 +1,7 @@
 /*********************************************************************************************************************
  * 文件名称          camera.c
  * 功能描述          MT9V03X 摄像头初始化、参数配置、以图像中心为焦点的自动曝光(AE)模块实现
- * 团队              Trace Vector
+ * 团队              META
  * 创建日期          2026-03-10
  *
  * 算法说明
@@ -15,8 +15,9 @@
  *
  * 修改记录
  * 日期              作者           备注
- * 2026-03-10        Trace Vector   first version
- * 2026-03-10        Trace Vector   间隔采样 + 帧降频优化
+ * 2026-03-10        META   first version
+ * 2026-03-10        META   间隔采样 + 帧降频优化
+ * 2026-03-10        META   添加 printf log
  ********************************************************************************************************************/
 
 #include "zf_common_headfile.h"
@@ -78,6 +79,11 @@ uint8 camera_init(void)
     {
         s_exposure     = MT9V03X_EXP_TIME_DEF;
         s_ae_frame_cnt = 0;
+        printf("[Camera] init ok, exposure=%u\r\n", (unsigned int)s_exposure);
+    }
+    else
+    {
+        printf("[Camera] init failed, ret=%u\r\n", (unsigned int)ret);
     }
     return ret;
 }
@@ -107,6 +113,11 @@ uint8 camera_set_exposure(uint16 exp)
     if (ret == 0)
     {
         s_exposure = exp;
+        printf("[Camera] set exposure=%u\r\n", (unsigned int)s_exposure);
+    }
+    else
+    {
+        printf("[Camera] set exposure failed, ret=%u\r\n", (unsigned int)ret);
     }
     return ret;
 }
@@ -138,9 +149,13 @@ void camera_auto_exposure(void)
     avg   = _calc_roi_average();
     error = (int16)avg - (int16)CAMERA_AE_TARGET;
 
+    printf("[Camera] AE avg=%u, error=%d, exp=%u\r\n",
+           (unsigned int)avg, (int)error, (unsigned int)s_exposure);
+
     /* 死区：误差在容差内不调整，防止频繁抖动 */
     if (error > -(int16)CAMERA_AE_TOLERANCE && error < (int16)CAMERA_AE_TOLERANCE)
     {
+        printf("[Camera] AE within tolerance, no adjustment\r\n");
         return;
     }
 
@@ -153,6 +168,7 @@ void camera_auto_exposure(void)
     if (new_exp < CAMERA_EXP_MIN) new_exp = CAMERA_EXP_MIN;
     if (new_exp > CAMERA_EXP_MAX) new_exp = CAMERA_EXP_MAX;
 
+    printf("[Camera] AE adjust delta=%d, new_exp=%d\r\n", (int)delta, (int)new_exp);
     camera_set_exposure((uint16)new_exp);
 }
 
