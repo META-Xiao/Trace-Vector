@@ -125,7 +125,7 @@ uint8 camera_set_exposure(uint16 exp)
 /*--------------------------------------------------------------------------------------------------------------------
  * 函数简介     自动曝光（含帧降频 + 间隔采样）
  * 返回参数     void
- * 使用示例     if (camera_frame_ready()) { camera_auto_exposure(); /* 再做边缘/位置处理 */ }
+ * 使用示例     if (camera_frame_ready()) { camera_auto_exposure();  再做边缘/位置处理 }
  * 备注信息
  *   每 CAMERA_AE_FRAME_INTERVAL 帧执行一次真正的 AE 计算，
  *   其余帧直接返回，CPU 时间完全留给后续图像处理。
