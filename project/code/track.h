@@ -16,7 +16,8 @@
  *
  * 修改记录
  * 日期              作者           备注
- * 2026-03-10        META   first version
+ * 2026-03-10        Trace Vector   first version
+ * 2026-03-10        Trace Vector   精简函数名与变量名
  ********************************************************************************************************************/
 
 #ifndef __TRACK_H__
@@ -39,75 +40,61 @@
 /* 最长白列搜索的行范围限制（近端/远端行号，0=最顶行）
  * 近端：MT9V03X_H*2/3 附近  远端：MT9V03X_H/6 附近
  */
-#define TRACK_SCAN_ROW_NEAR     ( MT9V03X_H * 2 / 3 )  // 搜索近端起始行（较大行号=图像下方）
-#define TRACK_SCAN_ROW_FAR      ( MT9V03X_H / 6  )     // 搜索远端截止行（较小行号=图像上方）
+#define TRACK_ROW_NEAR          ( MT9V03X_H * 2 / 3 )  // 搜索近端起始行（较大行号=图像下方）
+#define TRACK_ROW_FAR           ( MT9V03X_H / 6  )     // 搜索远端截止行（较小行号=图像上方）
 
 /* 对比度阈值：差比和 > 此值判定为边界（Q8定点，128 ≈ 0.5） */
 #define TRACK_CONTRAST_THRESH   ( 80 )  // 范围 0~255，值越大越严格
 
 /* 参考白点采样区域（近端中央小块） */
-#define TRACK_REF_ROW_START     ( MT9V03X_H * 3 / 4 )          // 参考白点起始行
-#define TRACK_REF_ROW_END       ( MT9V03X_H - 2       )        // 参考白点终止行
-#define TRACK_REF_COL_START     ( MT9V03X_W * 1 / 3   )        // 参考白点起始列
-#define TRACK_REF_COL_END       ( MT9V03X_W * 2 / 3   )        // 参考白点终止列
-#define TRACK_REF_STEP          ( 2 )                           // 参考白点采样步长
+#define TRACK_REF_ROW0          ( MT9V03X_H * 3 / 4 )  // 参考白点起始行
+#define TRACK_REF_ROW1          ( MT9V03X_H - 2       ) // 参考白点终止行
+#define TRACK_REF_COL0          ( MT9V03X_W * 1 / 3   ) // 参考白点起始列
+#define TRACK_REF_COL1          ( MT9V03X_W * 2 / 3   ) // 参考白点终止列
+#define TRACK_REF_STEP          ( 2 )                    // 参考白点采样步长
 
 /* 图像中线列坐标 */
-#define TRACK_IMG_CENTER_COL    ( MT9V03X_W / 2 )       // 188/2 = 94
+#define TRACK_MID_COL           ( MT9V03X_W / 2 )       // 188/2 = 94
 
 /* ------------------------------------------------- 数据结构 ------------------------------------------------------- */
 
-/*
- * 单行搜线结果
- */
+/* 单行搜线结果 */
 typedef struct
 {
-    uint8  valid;       // 1=本行搜线有效  0=无效（未找到白区或边界）
-    uint8  left;        // 左边界列坐标
-    uint8  right;       // 右边界列坐标
-    uint8  center;      // 中线列坐标 = (left + right) / 2
-} track_row_t;
+    uint8  valid;   // 1=本行搜线有效  0=无效
+    uint8  left;    // 左边界列坐标
+    uint8  right;   // 右边界列坐标
+    uint8  mid;     // 中线列坐标 = (left + right) / 2
+} track_line_t;
 
-/*
- * 完整一帧的搜线结果，供 PID 及上层逻辑读取
- */
+/* 整帧搜线结果，供 PID 及上层逻辑读取 */
 typedef struct
 {
-    /* ---- 基础搜线数据 ---- */
-    uint8      ref_white;           // 参考白点灰度均值
-    uint8      start_row;           // 最长白列所在行（搜线起点行）
-    uint8      start_col;           // 最长白列所在列（搜线起点列）
+    /* 基础搜线数据 */
+    uint8        ref;                   // 参考白点灰度均值
+    uint8        src_row;               // 搜线起点行（最长白列所在行）
+    uint8        src_col;               // 搜线起点列（最长白列所在列）
+    track_line_t lines[MT9V03X_H];      // 每行搜线结果
 
-    track_row_t rows[MT9V03X_H];    // 每行搜线结果（仅 start_row 附近有效行被填充）
-
-    /* ---- PID 接口数据 ---- */
-    int16   center_error;   // 中线偏差 = 有效行中线均值 - TRACK_IMG_CENTER_COL
-                            // 正值：赛道偏右，负值：赛道偏左
-    uint8   valid_rows;     // 有效搜线行数
-    uint8   road_width;     // 平均赛道宽度（右-左 均值），可用于特殊路况判断
-} track_result_t;
+    /* PID 接口数据 */
+    int16   err;        // 中线偏差 = 有效行中线均值 - TRACK_MID_COL
+                        // 正值：赛道偏右，负值：赛道偏左
+    uint8   n_valid;    // 有效搜线行数
+    uint8   width;      // 平均赛道宽度（right-left 均值），可用于特殊路况判断
+} track_t;
 
 /* ------------------------------------------------- 对外接口 ------------------------------------------------------- */
 
-/* 循迹模块初始化（目前为空实现，保留扩展接口） */
-void   track_init(void);
+/* 循迹模块初始化 */
+void          track_init(void);
 
-/* 执行一帧搜线，结果写入内部缓冲区
- * 应在 camera_frame_ready() 返回1后调用
- * 内部不做帧降频，由调用方决定调用频率
- */
-void   track_process(void);
+/* 执行一帧搜线，应在 camera_frame_ready() 返回1后调用 */
+void          track_process(void);
 
-/* 获取最近一次 track_process() 的搜线结果指针（只读）
- * 供 PID 控制器及上层逻辑读取
- * 返回值永不为 NULL
- */
-const track_result_t* track_get_result(void);
+/* 获取最近一帧搜线结果指针（只读，永不为NULL） */
+const track_t* track_result(void);
 
-/* 获取中线偏差（对 track_result_t.center_error 的快捷访问）
- * 正值=赛道偏右  负值=赛道偏左
- */
-int16  track_get_error(void);
+/* 获取中线偏差，正值=赛道偏右，负值=赛道偏左，直接供 PID 使用 */
+int16         track_error(void);
 
 #endif /* __TRACK_H__ */
-
