@@ -40,6 +40,7 @@ CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 Makefile
+build/
 
 # 操作系统文件
 .DS_Store
