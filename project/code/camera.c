@@ -1,19 +1,22 @@
 /*********************************************************************************************************************
  * 文件名称          camera.c
- * 功能描述          MT9V03X 摄像头初始化、参数配置、以图像中心为焦点的自动曝光（AE）模块实现
+ * 功能描述          MT9V03X 摄像头初始化、参数配置、以图像中心为焦点的自动曝光(AE)模块实现
  * 团队              Trace Vector
  * 创建日期          2026-03-10
  *
  * 算法说明
- *   自动曝光（AE）采用「中心加权测光 + 比例调节」策略：
- *     1. 以图像中心 1/3 × 1/3 矩形区域（ROI）为测光焦点，计算区域像素均值 avg。
- *     2. 若 |avg - TARGET| <= TOLERANCE，则不调整（防止频繁抖动）。
- *     3. 否则按误差大小等比例缩放曝光时间，并限幅在 [EXP_MIN, EXP_MAX]。
- *     4. 通过 mt9v03x_set_exposure_time() 将新曝光值写入摄像头寄存器。
+ *   自动曝光(AE)采用「中心 ROI 间隔采样测光 + 比例调节 + 帧降频」策略：
+ *     1. 每 CAMERA_AE_FRAME_INTERVAL 帧才执行一次 AE，其余帧 CPU 留给边缘/位置处理。
+ *     2. 以图像中心 ROI 为测光焦点，按 ROW_STEP/COL_STEP 间隔采样，
+ *        采样点约为全采样的 1/4，耗时减少约 75%，均值精度基本不变。
+ *     3. 奇偶行列错位，减少固定模式采样偏差。
+ *     4. 若误差在 TOLERANCE 死区内则不调整（防抖）。
+ *     5. 调整量按误差比例计算并限幅，通过 SCCB 写入摄像头。
  *
  * 修改记录
  * 日期              作者           备注
  * 2026-03-10        Trace Vector   first version
+ * 2026-03-10        Trace Vector   间隔采样 + 帧降频优化
  ********************************************************************************************************************/
 
 #include "zf_common_headfile.h"
@@ -21,26 +24,38 @@
 
 /* ------------------------------------------------- 模块私有变量 ------------------------------------------------- */
 
-/** 当前生效的曝光时间 */
-static uint16 s_exposure = MT9V03X_EXP_TIME_DEF;
+static uint16 s_exposure     = MT9V03X_EXP_TIME_DEF;  // 当前生效的曝光时间
+static uint8  s_ae_frame_cnt = 0;                      // AE 帧计数器
 
 /* ------------------------------------------------- 私有函数 ------------------------------------------------------ */
 
-/**
- * @brief  对 ROI 区域内的所有像素求和，返回平均灰度值
- *         ROI 以图像中心为焦点，尺寸由 camera.h 中宏定义决定。
- */
+/*--------------------------------------------------------------------------------------------------------------------
+ * 函数简介     ROI 间隔采样求均值
+ * 返回参数     uint8   平均灰度值(0-255)
+ * 备注信息
+ *   行步长 CAMERA_AE_ROW_STEP、列步长 CAMERA_AE_COL_STEP（默认均为2）
+ *   采样点数约为全采样的 1/4，像素访问次数从 ~2480 降至 ~620
+ *   奇偶行列错位（col起点偏移 row&1），减少固定采样偏差
+ *------------------------------------------------------------------------------------------------------------------*/
 static uint8 _calc_roi_average(void)
 {
-    uint32 sum   = 0;
-    uint16 count = (uint16)CAMERA_AE_ROI_W * (uint16)CAMERA_AE_ROI_H;
+    uint32 sum       = 0;
+    uint16 count     = 0;
     uint8  row, col;
+    uint8  col_start;
 
-    for (row = CAMERA_AE_ROI_Y; row < (CAMERA_AE_ROI_Y + CAMERA_AE_ROI_H); row++)
+    for (row = (uint8)CAMERA_AE_ROI_Y;
+         row < (uint8)(CAMERA_AE_ROI_Y + CAMERA_AE_ROI_H);
+         row += CAMERA_AE_ROW_STEP)
     {
-        for (col = CAMERA_AE_ROI_X; col < (CAMERA_AE_ROI_X + CAMERA_AE_ROI_W); col++)
+        col_start = (uint8)(CAMERA_AE_ROI_X + (row & 1u));  // 奇偶行列错位
+
+        for (col = col_start;
+             col < (uint8)(CAMERA_AE_ROI_X + CAMERA_AE_ROI_W);
+             col += CAMERA_AE_COL_STEP)
         {
             sum += mt9v03x_image[row][col];
+            count++;
         }
     }
 
@@ -52,7 +67,6 @@ static uint8 _calc_roi_average(void)
 
 /*--------------------------------------------------------------------------------------------------------------------
  * 函数简介     摄像头初始化
- * 参数说明     void
  * 返回参数     uint8   0-成功  非0-失败
  * 使用示例     camera_init();
  * 备注信息     必须在 clock_init() 完成后调用
@@ -62,16 +76,15 @@ uint8 camera_init(void)
     uint8 ret = mt9v03x_init();
     if (ret == 0)
     {
-        s_exposure = MT9V03X_EXP_TIME_DEF;
+        s_exposure     = MT9V03X_EXP_TIME_DEF;
+        s_ae_frame_cnt = 0;
     }
     return ret;
 }
 
 /*--------------------------------------------------------------------------------------------------------------------
  * 函数简介     获取当前摄像头曝光时间
- * 参数说明     void
  * 返回参数     uint16  当前曝光时间
- * 使用示例     uint16 exp = camera_get_exposure();
  *------------------------------------------------------------------------------------------------------------------*/
 uint16 camera_get_exposure(void)
 {
@@ -80,16 +93,17 @@ uint16 camera_get_exposure(void)
 
 /*--------------------------------------------------------------------------------------------------------------------
  * 函数简介     手动设置曝光时间
- * 参数说明     exp   曝光时间 [CAMERA_EXP_MIN, CAMERA_EXP_MAX]
+ * 参数说明     exp   [CAMERA_EXP_MIN, CAMERA_EXP_MAX]
  * 返回参数     uint8   0-成功  1-失败
  * 使用示例     camera_set_exposure(300);
  *------------------------------------------------------------------------------------------------------------------*/
 uint8 camera_set_exposure(uint16 exp)
 {
+    uint8 ret;
     if (exp < CAMERA_EXP_MIN) exp = CAMERA_EXP_MIN;
     if (exp > CAMERA_EXP_MAX) exp = CAMERA_EXP_MAX;
 
-    uint8 ret = mt9v03x_set_exposure_time(exp);
+    ret = mt9v03x_set_exposure_time(exp);
     if (ret == 0)
     {
         s_exposure = exp;
@@ -98,34 +112,44 @@ uint8 camera_set_exposure(uint16 exp)
 }
 
 /*--------------------------------------------------------------------------------------------------------------------
- * 函数简介     以图像中心 ROI 为测光区域执行一次自动曝光调节
- * 参数说明     void
+ * 函数简介     自动曝光（含帧降频 + 间隔采样）
  * 返回参数     void
- * 使用示例     在主循环中，每帧图像采集完成后调用一次：
- *              if (camera_frame_ready()) { camera_auto_exposure(); }
- * 备注信息     内部使用比例调节，调整量限幅为 CAMERA_AE_STEP
+ * 使用示例     if (camera_frame_ready()) { camera_auto_exposure(); /* 再做边缘/位置处理 */ }
+ * 备注信息
+ *   每 CAMERA_AE_FRAME_INTERVAL 帧执行一次真正的 AE 计算，
+ *   其余帧直接返回，CPU 时间完全留给后续图像处理。
  *------------------------------------------------------------------------------------------------------------------*/
 void camera_auto_exposure(void)
 {
-    uint8  avg   = _calc_roi_average();
-    int16  error = (int16)avg - (int16)CAMERA_AE_TARGET;
+    int16  error;
     int16  delta;
     int32  new_exp;
+    uint8  avg;
 
-    /* 在容差范围内不做调整，避免频繁抖动 */
+    /* 帧降频：未到执行间隔直接跳过 */
+    s_ae_frame_cnt++;
+    if (s_ae_frame_cnt < CAMERA_AE_FRAME_INTERVAL)
+    {
+        return;
+    }
+    s_ae_frame_cnt = 0;
+
+    /* 间隔采样求 ROI 均值 */
+    avg   = _calc_roi_average();
+    error = (int16)avg - (int16)CAMERA_AE_TARGET;
+
+    /* 死区：误差在容差内不调整，防止频繁抖动 */
     if (error > -(int16)CAMERA_AE_TOLERANCE && error < (int16)CAMERA_AE_TOLERANCE)
     {
         return;
     }
 
-    /*自动曝光逻辑*/
-    delta = -error / 4;   /* 粗粒度：每4灰阶误差调整1单位曝光 */
+    /* 比例调节：每 4 灰阶误差调整 1 单位曝光，限幅至 ±STEP */
+    delta = -error / 4;
     if (delta >  (int16)CAMERA_AE_STEP) delta =  (int16)CAMERA_AE_STEP;
     if (delta < -(int16)CAMERA_AE_STEP) delta = -(int16)CAMERA_AE_STEP;
 
     new_exp = (int32)s_exposure + delta;
-
-    /* 限幅 */
     if (new_exp < CAMERA_EXP_MIN) new_exp = CAMERA_EXP_MIN;
     if (new_exp > CAMERA_EXP_MAX) new_exp = CAMERA_EXP_MAX;
 
@@ -134,8 +158,7 @@ void camera_auto_exposure(void)
 
 /*--------------------------------------------------------------------------------------------------------------------
  * 函数简介     获取图像中心 ROI 区域的平均灰度
- * 参数说明     void
- * 返回参数     uint8   平均灰度值 (0-255)
+ * 返回参数     uint8   平均灰度值(0-255)
  * 使用示例     uint8 bright = camera_get_center_brightness();
  *------------------------------------------------------------------------------------------------------------------*/
 uint8 camera_get_center_brightness(void)
@@ -144,8 +167,7 @@ uint8 camera_get_center_brightness(void)
 }
 
 /*--------------------------------------------------------------------------------------------------------------------
- * 函数简介     判断摄像头新帧是否就绪，就绪时自动清除采集完成标志
- * 参数说明     void
+ * 函数简介     检测新帧是否就绪，就绪时自动清除采集完成标志
  * 返回参数     uint8   1-新帧就绪  0-尚无新帧
  * 使用示例     if (camera_frame_ready()) { ... }
  *------------------------------------------------------------------------------------------------------------------*/
@@ -158,4 +180,3 @@ uint8 camera_frame_ready(void)
     }
     return 0;
 }
-
